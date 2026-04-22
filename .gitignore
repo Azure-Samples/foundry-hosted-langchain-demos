@@ -191,6 +191,10 @@ cython_debug/
 # Ruff stuff:
 .ruff_cache/
 
+# Local eval artifacts
+scripts/eval_output/
+scripts/red_team_output/
+
 # PyPI configuration file
 .pypirc
 
