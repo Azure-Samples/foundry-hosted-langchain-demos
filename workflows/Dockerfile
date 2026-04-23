@@ -10,7 +10,7 @@ COPY pyproject.toml uv.lock ./
 
 RUN uv sync --locked --no-dev
 
-COPY main.py .
+COPY stage4_foundry_hosted_as_agent.py .
 
 ENV PATH="/app/.venv/bin:$PATH"
 
@@ -19,4 +19,4 @@ EXPOSE 8088
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8088/health')" || exit 1
 
-CMD ["python", "-u", "main.py"]
+CMD ["python", "-u", "stage4_foundry_hosted_as_agent.py"]

@@ -25,7 +25,7 @@ services:
                   sku:
                     capacity: 10
                     name: GlobalStandard
-            startupCommand: python main.py
+            startupCommand: python stage4_foundry_hosted.py
     hosted-langgraph-workflow:
         project: ./workflows
         host: azure.ai.agent
@@ -37,7 +37,7 @@ services:
                 resources:
                     cpu: "1"
                     memory: 2Gi
-            startupCommand: python main.py
+            startupCommand: python stage4_foundry_hosted_as_agent.py
 infra:
     provider: bicep
     path: ./infra

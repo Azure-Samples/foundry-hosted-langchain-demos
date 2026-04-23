@@ -69,7 +69,10 @@ LICENSE.md
 .ruff_cache/
 
 # Local-only scripts (not needed in container)
-stage*.py
+stage0_*.py
+stage1_*.py
+stage2_*.py
+stage3_*.py
 call_deployed_agent.py
 
 # Deployment config (used by azd, not the container)

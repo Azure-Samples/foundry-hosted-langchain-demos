@@ -67,7 +67,9 @@ docs/
 .ruff_cache/
 
 # Local-only scripts (not needed in container)
-stage*.py
+stage1_*.py
+stage2_*.py
+stage3_*.py
 simple_workflow.py
 workflow_as_agent.py
 
