@@ -29,6 +29,7 @@ from azure.ai.agentserver.responses.models import (
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
 from langchain.agents import create_agent
+from langchain_azure_ai.callbacks.tracers import enable_auto_tracing
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.tools import tool
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -39,11 +40,14 @@ load_dotenv(override=True)
 logger = logging.getLogger("hr-agent")
 logger.setLevel(logging.INFO)
 
-if not os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING"):
-    logger.warning(
-        "APPLICATIONINSIGHTS_CONNECTION_STRING not set — traces will not be sent to "
-        "Application Insights. Set it for local telemetry; hosted containers inject it automatically."
-    )
+# Emit LangChain/LangGraph spans to Application Insights with gen_ai.agent.id
+# so the Foundry portal Agent Monitor can identify this agent's traces.
+enable_auto_tracing(
+    auto_configure_azure_monitor=True,
+    enable_content_recording=False,
+    trace_all_langgraph_nodes=True,
+    agent_id="hr-agent",
+)
 
 PROJECT_ENDPOINT = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
 MODEL_DEPLOYMENT_NAME = os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"]

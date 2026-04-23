@@ -22,6 +22,7 @@ from azure.ai.agentserver.responses import (
 )
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
+from langchain_azure_ai.callbacks.tracers import enable_auto_tracing
 from langchain_openai import ChatOpenAI
 from langgraph.func import entrypoint, task
 
@@ -29,6 +30,15 @@ load_dotenv(dotenv_path="../.env", override=True)
 
 logger = logging.getLogger("workflow-agent")
 logger.setLevel(logging.INFO)
+
+# Emit LangChain/LangGraph spans to Application Insights with gen_ai.agent.id
+# so the Foundry portal Agent Monitor can identify this agent's traces.
+enable_auto_tracing(
+    auto_configure_azure_monitor=True,
+    enable_content_recording=False,
+    trace_all_langgraph_nodes=True,
+    agent_id="slogan-workflow",
+)
 
 PROJECT_ENDPOINT = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
 MODEL_DEPLOYMENT_NAME = os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"]

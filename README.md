@@ -157,7 +157,9 @@ azd ai agent monitor -f
 
 ## Observability
 
-The agent exports OpenTelemetry traces to Application Insights when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set (handled automatically by the hosted agent server).
+The hosted agent server exports its own HTTP-layer traces (request/response timing) to Application Insights automatically when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set.
+
+To capture sensitive data in traces (tool call arguments, prompts, responses), set `enable_content_recording=True` in the `enable_auto_tracing()` call. This is useful for debugging but should be disabled in production.
 
 To query traces in Application Insights:
 
