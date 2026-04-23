@@ -4,8 +4,8 @@ Workflow as Agent: Writer → Formatter pipeline with streaming output.
 Demonstrates LangGraph's StateGraph with astream — each node produces
 output that is printed as it arrives, showing the multi-step processing.
 
-This is the same pattern used by the hosted version in workflows/main.py,
-but run locally with streaming output.
+This is the local runnable version of the workflow pattern used by the
+hosted version in stage4_foundry_hosted_as_agent.py.
 
 Prerequisites:
     - An Azure OpenAI / Foundry model deployment
@@ -15,7 +15,7 @@ Prerequisites:
         AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-5.2
 
 Run:
-    python workflows/workflow_as_agent.py
+    python workflows/stage3_as_agent.py
 """
 
 import asyncio

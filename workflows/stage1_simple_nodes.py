@@ -1,14 +1,14 @@
 """
 Simple workflow example: UpperCase → ReverseText.
 
-Demonstrates LangGraph's StateGraph for chaining pure functions:
+Demonstrates LangGraph's StateGraph for chaining pure functions (nodes):
     - upper_case converts input text to uppercase
     - reverse_text reverses the string
 
 No LLM calls — pure data transformation to illustrate workflow mechanics.
 
 Run:
-    python workflows/simple_workflow.py
+    python workflows/stage1_simple_nodes.py
 """
 
 import asyncio

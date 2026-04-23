@@ -1,7 +1,7 @@
 """
-Workflow Stage 1: Writer → Formatter workflow using a Foundry-hosted model.
+Workflow Stage 2: Writer → Formatter workflow using a Foundry-hosted model.
 
-Two LLM nodes in a chain:
+Two LLM nodes (agents) in a chain:
     writer → formatter
 
 The writer drafts a short article, and the formatter styles it with
@@ -15,7 +15,7 @@ Prerequisites:
         AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-5.2
 
 Run:
-    python workflows/stage1_foundry_model.py
+    python workflows/stage2_agent_nodes.py
 """
 
 import asyncio
