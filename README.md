@@ -159,8 +159,6 @@ azd ai agent monitor -f
 
 The hosted agent server exports its own HTTP-layer traces (request/response timing) to Application Insights automatically when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set.
 
-To also trace **LangChain internals** (tool calls, LLM invocations, graph nodes), the agent uses `langchain-azure-ai[opentelemetry]` with `enable_auto_tracing()`. This is configured in `agents/stage4_foundry_hosted.py` and activates automatically when the connection string is present.
-
 To capture sensitive data in traces (tool call arguments, prompts, responses), set `enable_content_recording=True` in the `enable_auto_tracing()` call. This is useful for debugging but should be disabled in production.
 
 To query traces in Application Insights:
