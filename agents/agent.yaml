@@ -1,0 +1,13 @@
+kind: hosted
+name: hosted-langgraph-agent
+protocols:
+  - protocol: responses
+    version: 1.0.0
+resources:
+  cpu: "0.25"
+  memory: 0.5Gi
+environment_variables:
+  - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
+    value: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+  - name: CUSTOM_FOUNDRY_AGENT_TOOLBOX_NAME
+    value: hr-agent-tools

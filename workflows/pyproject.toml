@@ -1,0 +1,30 @@
+[project]
+name = "foundry-hosted-langchain-workflow-demos"
+version = "0.1.0"
+description = "LangGraph workflow demos for Microsoft Foundry"
+requires-python = ">=3.12"
+dependencies = [
+    "azure-ai-agentserver-responses==1.0.0b4",
+    "azure-ai-agentserver-core==2.0.0b2",
+    "azure-identity>=1.25.3",
+    "langchain-openai>=1.2.0",
+    "langgraph>=1.1.8",
+    "python-dotenv>=1.2.2",
+]
+
+[tool.uv]
+prerelease = "allow"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = []
