@@ -1,16 +1,12 @@
 """
 Workflow demo: Multi-step workflow using LangGraph's Functional API.
 
-Uses the Responses protocol via ResponsesAgentServerHost for hosting.
 Three LLM tasks in a chain:
     writer → legal_reviewer → formatter
 
 The writer creates a slogan, the legal reviewer checks it, and the formatter
 styles it for terminal output. Each task only sees the output of the
 previous task.
-
-Conversation history is managed externally by the platform via
-``previous_response_id``.
 """
 
 import asyncio

@@ -15,7 +15,7 @@ Prerequisites:
         AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-5.2
 
 Run:
-    python workflows/stage3_as_agent.py
+    uv run python workflows/stage3_as_agent.py
 """
 
 import os

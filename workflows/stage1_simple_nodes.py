@@ -8,7 +8,7 @@ Demonstrates LangGraph's Functional API for chaining pure functions (tasks):
 No LLM calls — pure data transformation to illustrate workflow mechanics.
 
 Run:
-    python workflows/stage1_simple_nodes.py
+    uv run python workflows/stage1_simple_nodes.py
 """
 
 from langgraph.func import entrypoint, task

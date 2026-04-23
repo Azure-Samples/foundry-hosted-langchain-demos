@@ -1,11 +1,5 @@
 """
 Call the deployed hosted agent via the azure-ai-projects SDK.
-
-Usage:
-    python agents/call_foundry_hosted.py "What PerksPlus benefits are there?"
-
-Requires environment variables:
-    FOUNDRY_PROJECT_ENDPOINT — Foundry project endpoint URL
 """
 
 import argparse

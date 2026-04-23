@@ -12,7 +12,7 @@ Prerequisites:
        at http://localhost:11434/v1 by default).
 
 Run:
-    python agents/stage0_local_model.py
+    uv run python agents/stage0_local_model.py
 """
 
 import asyncio

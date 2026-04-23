@@ -1,18 +1,21 @@
 """
-Stage 2: Add Foundry IQ grounding through the Azure AI Search MCP endpoint.
+Stage 2: Add Foundry IQ — ground answers in an enterprise knowledge base
+served by Azure AI Search via its MCP endpoint.
 
-This LangChain version uses LangChain's MCP adapters to discover and call the
-knowledge-base tool exposed by Azure AI Search.
+Uses LangChain's MCP adapters to discover and call the knowledge-base tool
+exposed by Azure AI Search, with bearer-token auth via ``httpx.Auth``.
 
-If the KB MCP endpoint still returns unsupported payloads in your environment,
-use `stage2_foundry_iq_workaround.py` or `stage2_foundry_iq_retrieve.py`.
+What changes from Stage 1:
+    - Open an MCP client pointing at the KB MCP endpoint.
+    - Pass the discovered tools to the agent alongside the local tools.
+    - Update the system prompt to prefer the KB.
 
 Prerequisites (in addition to Stage 1):
     AZURE_AI_SEARCH_SERVICE_ENDPOINT=https://<your-search>.search.windows.net
     AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME=zava-company-kb
 
 Run:
-    python stage2_foundry_iq.py
+    uv run python agents/stage2_foundry_iq.py
 """
 
 import asyncio

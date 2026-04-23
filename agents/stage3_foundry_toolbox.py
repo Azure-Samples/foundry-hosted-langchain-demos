@@ -11,7 +11,7 @@ Prerequisites (in addition to Stage 1):
       The azd up process uses "infra/create-toolbox.py" to create the toolbox.
 
 Run:
-    python stage3_foundry_toolbox.py
+    uv run python agents/stage3_foundry_toolbox.py
 """
 
 import asyncio

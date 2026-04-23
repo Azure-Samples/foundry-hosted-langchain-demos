@@ -2,7 +2,7 @@
 Stage 1: Same agent, but using a model deployed in Microsoft Foundry
 (Azure OpenAI) instead of a local SLM.
 
-Only the chat client changes — the tool-calling agent code is identical to Stage 0.
+Only the chat client changes — the agent + tool code is identical to Stage 0.
 
 Prerequisites:
     - An Azure OpenAI / Foundry model deployment
@@ -12,7 +12,7 @@ Prerequisites:
         AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-5.2
 
 Run:
-    python stage1_foundry_model.py
+    uv run python agents/stage1_foundry_model.py
 """
 
 import asyncio

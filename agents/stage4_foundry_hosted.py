@@ -1,16 +1,9 @@
 """
-Hosted HR helper built with LangGraph and Microsoft Foundry.
+Internal HR Helper — An agent with tools to answer health insurance questions.
+Uses LangGraph with Microsoft Foundry.
+Ready for deployment to Foundry Hosted Agent service.
 
-Uses the Responses protocol via ResponsesAgentServerHost for hosting.
-The agent is built with ``create_agent`` (LangChain v1) which provides
-a ReAct tool-calling loop. Conversation history is managed by the
-platform via ``previous_response_id`` and ``context.get_history()``.
-
-All tools — knowledge-base retrieval, web search, code interpreter —
-come from a single Foundry Toolbox MCP endpoint, plus two local tools
-for enrollment deadlines and the current date.
-
-Run locally with:
+Run using:
     azd ai agent run
 """
 
