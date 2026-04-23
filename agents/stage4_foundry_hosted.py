@@ -1,6 +1,11 @@
 """
 Hosted HR helper built with LangGraph and Microsoft Foundry.
 
+Uses the Responses protocol via ResponsesAgentServerHost for hosting.
+The LangGraph agent has two nodes: chatbot (calls LLM with tools) and
+tools (executes tool calls). Conversation history is managed by the
+platform via ``previous_response_id`` and ``context.get_history()``.
+
 Run locally with:
     azd ai agent run
 """
@@ -13,14 +18,28 @@ from datetime import date
 from typing import Annotated
 
 import httpx
-from azure.ai.agentserver.langgraph import from_langgraph
+from azure.ai.agentserver.responses import (
+    CreateResponse,
+    ResponseContext,
+    ResponsesAgentServerHost,
+    ResponsesServerOptions,
+    TextResponse,
+)
+from azure.ai.agentserver.responses.models import (
+    MessageContentInputTextContent,
+    MessageContentOutputTextContent,
+)
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
-from langchain.agents import create_agent
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.tools import tool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
+from langgraph.graph import END, START, StateGraph
+from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolNode
 from pydantic import Field
+from typing_extensions import TypedDict
 
 load_dotenv(dotenv_path=".env", override=True)
 
@@ -34,14 +53,14 @@ if not os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING"):
     )
 
 PROJECT_ENDPOINT = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
-# The agentserver SDK (1.0.0b14) reads AZURE_AI_PROJECT_ENDPOINT internally.
-# The hosted platform injects FOUNDRY_PROJECT_ENDPOINT, so bridge the gap.
-os.environ.setdefault("AZURE_AI_PROJECT_ENDPOINT", PROJECT_ENDPOINT)
 MODEL_DEPLOYMENT_NAME = os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"]
 SEARCH_SERVICE_ENDPOINT = os.environ["AZURE_AI_SEARCH_SERVICE_ENDPOINT"]
 KNOWLEDGE_BASE_NAME = os.environ["AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME"]
 TOOLBOX_NAME = os.environ.get("CUSTOM_FOUNDRY_AGENT_TOOLBOX_NAME", "hr-agent-tools")
 TOOLBOX_FEATURES = os.getenv("FOUNDRY_AGENT_TOOLBOX_FEATURES", "Toolboxes=V1Preview")
+
+_credential = DefaultAzureCredential()
+_token_provider = get_bearer_token_provider(_credential, "https://ai.azure.com/.default")
 
 
 class _AzureTokenAuth(httpx.Auth):
@@ -51,6 +70,9 @@ class _AzureTokenAuth(httpx.Auth):
     def auth_flow(self, request):
         request.headers["Authorization"] = f"Bearer {self._provider()}"
         yield request
+
+
+_http_client = httpx.Client(auth=_AzureTokenAuth(_token_provider), timeout=120.0)
 
 
 class KnowledgeBaseMCPTool:
@@ -168,27 +190,21 @@ benefits timing.
 If the tools do not provide enough information, say so clearly and do not invent facts.
 """
 
-_agent = None
+
+# ── LangGraph definition ────────────────────────────────────────────
+
+
+class State(TypedDict):
+    messages: Annotated[list, add_messages]
+
+
+_graph = None
 _toolbox_client = None
-_agent_lock = asyncio.Lock()
+_graph_lock = asyncio.Lock()
 
 
-async def _build_agent():
+async def _build_graph():
     global _toolbox_client
-
-    project_token_provider = get_bearer_token_provider(
-        DefaultAzureCredential(), "https://ai.azure.com/.default"
-    )
-    model_http_client = httpx.Client(auth=_AzureTokenAuth(project_token_provider), timeout=120.0)
-    model_async_http_client = httpx.AsyncClient(auth=_AzureTokenAuth(project_token_provider), timeout=120.0)
-    llm = ChatOpenAI(
-        base_url=f"{PROJECT_ENDPOINT.rstrip('/')}/openai/v1",
-        api_key="placeholder",
-        model=MODEL_DEPLOYMENT_NAME,
-        streaming=True,
-        http_client=model_http_client,
-        http_async_client=model_async_http_client,
-    )
 
     search_token_provider = get_bearer_token_provider(
         DefaultAzureCredential(), "https://search.azure.com/.default"
@@ -236,7 +252,7 @@ async def _build_agent():
                 "url": toolbox_endpoint,
                 "transport": "streamable_http",
                 "headers": extra_headers,
-                "auth": _AzureTokenAuth(project_token_provider),
+                "auth": _AzureTokenAuth(_token_provider),
             }
         }
     )
@@ -248,29 +264,110 @@ async def _build_agent():
     except Exception as exc:
         logger.warning("Toolbox startup skipped: %s", exc)
 
-    tools = [
+    all_tools = [
         knowledge_base_retrieve,
         get_enrollment_deadline_info,
         get_current_date,
         *toolbox_tools,
     ]
-    return create_agent(llm, tools, system_prompt=SYSTEM_PROMPT)
+
+    llm = ChatOpenAI(
+        base_url=f"{PROJECT_ENDPOINT.rstrip('/')}/openai/v1",
+        api_key="placeholder",
+        model=MODEL_DEPLOYMENT_NAME,
+        use_responses_api=True,
+        streaming=True,
+        http_client=_http_client,
+    )
+    llm_with_tools = llm.bind_tools(all_tools)
+
+    def chatbot(state: State):
+        return {"messages": [llm_with_tools.invoke(state["messages"])]}
+
+    def route_tools(state: State):
+        last = state["messages"][-1]
+        if hasattr(last, "tool_calls") and last.tool_calls:
+            return "tools"
+        return END
+
+    graph = StateGraph(State)
+    graph.add_node("chatbot", chatbot)
+    graph.add_node("tools", ToolNode(tools=all_tools))
+    graph.add_edge(START, "chatbot")
+    graph.add_conditional_edges("chatbot", route_tools, {"tools": "tools", END: END})
+    graph.add_edge("tools", "chatbot")
+    return graph.compile()
 
 
-async def _get_agent():
-    global _agent
-    if _agent is not None:
-        return _agent
-    async with _agent_lock:
-        if _agent is None:
-            _agent = await _build_agent()
-    return _agent
+async def _get_graph():
+    global _graph
+    if _graph is not None:
+        return _graph
+    async with _graph_lock:
+        if _graph is None:
+            _graph = await _build_graph()
+    return _graph
 
 
-async def main() -> None:
-    agent = await _get_agent()
-    await from_langgraph(agent, credentials=DefaultAzureCredential()).run_async()
+# ── Responses protocol handler ──────────────────────────────────────
+
+
+def _history_to_langchain_messages(history: list) -> list:
+    """Convert responses-protocol history items to LangChain messages."""
+    messages = []
+    for item in history:
+        if hasattr(item, "content") and item.content:
+            for content in item.content:
+                if isinstance(content, MessageContentOutputTextContent) and content.text:
+                    messages.append(AIMessage(content=content.text))
+                elif isinstance(content, MessageContentInputTextContent) and content.text:
+                    messages.append(HumanMessage(content=content.text))
+    return messages
+
+
+app = ResponsesAgentServerHost(
+    options=ResponsesServerOptions(default_fetch_history_count=20)
+)
+
+
+@app.response_handler
+async def handle_create(
+    request: CreateResponse,
+    context: ResponseContext,
+    cancellation_signal: asyncio.Event,
+):
+    """Run the LangGraph agent and stream the response."""
+
+    async def run_graph():
+        try:
+            graph = await _get_graph()
+            try:
+                history = await context.get_history()
+            except Exception:
+                history = []
+            current_input = await context.get_input_text() or "Hello!"
+
+            lc_messages = [SystemMessage(content=SYSTEM_PROMPT)]
+            lc_messages.extend(_history_to_langchain_messages(history))
+            lc_messages.append(HumanMessage(content=current_input))
+
+            result = await graph.ainvoke({"messages": lc_messages})
+
+            # With use_responses_api, content may be a list of content blocks.
+            raw = result["messages"][-1].content
+            if isinstance(raw, list):
+                yield "".join(
+                    block.get("text", "") if isinstance(block, dict) else str(block)
+                    for block in raw
+                )
+            else:
+                yield raw or ""
+        except Exception as exc:
+            logger.exception("run_graph failed")
+            yield f"[ERROR] {type(exc).__name__}: {exc}"
+
+    return TextResponse(context, request, text=run_graph())
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    app.run()
