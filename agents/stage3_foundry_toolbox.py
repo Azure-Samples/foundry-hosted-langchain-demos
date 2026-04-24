@@ -18,15 +18,15 @@ import asyncio
 import logging
 import os
 import re
-from datetime import date, timedelta
+from datetime import date
 
-import httpx
 import mcp.types
+from azure.identity import DefaultAzureCredential as SyncDefaultAzureCredential
 from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
 from langchain.agents import create_agent
+from langchain_azure_ai.tools import AzureAIProjectToolbox
 from langchain_core.tools import tool
-from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
 from rich.console import Console
 from rich.logging import RichHandler
@@ -38,6 +38,16 @@ console = Console()
 logger = logging.getLogger("stage3")
 
 
+def _sanitize_tool_names(tools: list) -> list:
+    """Fix MCP tool names for Responses API compatibility (^[a-zA-Z0-9_-]+$)."""
+    for t in tools:
+        sanitized = re.sub(r"[^a-zA-Z0-9_-]", "_", t.name)
+        if sanitized != t.name:
+            logger.info("Renamed tool %r -> %r", t.name, sanitized)
+            t.name = sanitized
+    return tools
+
+
 @tool
 def get_enrollment_deadline_info() -> dict:
     """Return enrollment timeline details for health insurance plans."""
@@ -46,40 +56,6 @@ def get_enrollment_deadline_info() -> dict:
         "enrollment_opens": "2026-11-11",
         "enrollment_closes": "2026-11-30",
     }
-
-
-class ToolboxAuth(httpx.Auth):
-    """Inject a fresh bearer token for the Foundry Toolbox MCP endpoint."""
-
-    def __init__(self, token_provider) -> None:
-        self._token_provider = token_provider
-
-    async def async_auth_flow(self, request):
-        token = await self._token_provider()
-        request.headers["Authorization"] = f"Bearer {token}"
-        yield request
-
-
-def _sanitize_tools(tools: list) -> list:
-    """Fix MCP tool names/schemas for Responses API compatibility."""
-    for tool_obj in tools:
-        tool_obj.handle_tool_error = True
-        sanitized = re.sub(r"[^a-zA-Z0-9_-]", "_", tool_obj.name)
-        if sanitized != tool_obj.name:
-            logger.info("Renamed tool %r -> %r for Responses API compatibility", tool_obj.name, sanitized)
-            tool_obj.name = sanitized
-        schema = tool_obj.args_schema if isinstance(tool_obj.args_schema, dict) else None
-        if schema is None:
-            continue
-        if schema.get("type") == "object" and "properties" not in schema:
-            schema["properties"] = {}
-        props = schema.get("properties", {})
-        required = schema.get("required", [])
-        if required and not props:
-            for field_name in required:
-                props[field_name] = {"type": "string"}
-            schema["properties"] = props
-    return tools
 
 
 # Workaround: Azure AI Search KB MCP returns resource content with uri: null
@@ -115,27 +91,11 @@ async def main() -> None:
             use_responses_api=True,
         )
 
-        toolbox_name = os.environ["CUSTOM_FOUNDRY_AGENT_TOOLBOX_NAME"]
-        project_endpoint = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
-        toolbox_endpoint = (
-            f"{project_endpoint.rstrip('/')}/toolboxes/{toolbox_name}/mcp?api-version=v1"
+        toolbox = AzureAIProjectToolbox(
+            toolbox_name=os.environ["CUSTOM_FOUNDRY_AGENT_TOOLBOX_NAME"],
+            credential=SyncDefaultAzureCredential(),
         )
-
-        toolbox_token_provider = get_bearer_token_provider(
-            credential, "https://ai.azure.com/.default"
-        )
-        toolbox_client = MultiServerMCPClient(
-            {
-                "toolbox": {
-                    "url": toolbox_endpoint,
-                    "transport": "streamable_http",
-                    "headers": {"Foundry-Features": "Toolboxes=V1Preview"},
-                    "timeout": timedelta(seconds=120),
-                    "auth": ToolboxAuth(toolbox_token_provider),
-                }
-            }
-        )
-        toolbox_tools = _sanitize_tools(await toolbox_client.get_tools(server_name="toolbox"))
+        toolbox_tools = _sanitize_tool_names(await toolbox.get_tools())
 
         agent = create_agent(
             model=client,

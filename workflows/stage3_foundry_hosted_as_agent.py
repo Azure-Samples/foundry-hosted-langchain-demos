@@ -1,11 +1,15 @@
 """
 Workflow demo: Writer → Formatter workflow hosted on Azure AI Foundry.
 
-Two LLM tasks in a chain:
+Two LLM nodes in a chain:
     writer → formatter
 
 The writer drafts a short article, and the formatter styles it with Markdown and emojis.
-Each task only sees the output of the previous task.
+Each node only sees the output of the previous node.
+
+All stages use LangGraph's Graph API (StateGraph). This stage adds
+hosting via AzureAIResponsesAgentHost with stream_mode="messages" for
+token-level streaming.
 
 This module uses AzureAIResponsesAgentHost from a vendored copy of
 https://github.com/langchain-ai/langchain-azure/pull/501 which provides
@@ -23,10 +27,9 @@ from dotenv import load_dotenv
 from langchain_azure_ai.callbacks.tracers import enable_auto_tracing
 from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
-from langgraph.func import entrypoint, task
-from langgraph.graph import MessagesState
+from langgraph.graph import END, START, MessagesState, StateGraph
 
-from _vendor.langchain_azure_ai_runtime import AzureAIResponsesAgentHost
+from vendor.langchain_azure_ai_runtime import AzureAIResponsesAgentHost
 
 load_dotenv(dotenv_path="../.env", override=True)
 
@@ -57,7 +60,6 @@ llm = ChatOpenAI(
 )
 
 
-@task
 async def writer(state: MessagesState) -> MessagesState:
     """Draft a short article based on the given topic."""
     user_text = state["messages"][-1].content
@@ -77,7 +79,6 @@ async def writer(state: MessagesState) -> MessagesState:
     return {"messages": [AIMessage(content=response.content)]}
 
 
-@task
 async def formatter(state: MessagesState) -> MessagesState:
     """Format text with Markdown and emojis."""
     previous_output = state["messages"][-1].content
@@ -98,17 +99,20 @@ async def formatter(state: MessagesState) -> MessagesState:
     return {"messages": [AIMessage(content=response.content)]}
 
 
-@entrypoint()
-async def workflow(state: MessagesState) -> MessagesState:
-    """Chain: Writer → Formatter."""
-    result = await writer(state)
-    return await formatter(result)
-
+graph = (
+    StateGraph(MessagesState)
+    .add_node(writer)
+    .add_node(formatter)
+    .add_edge(START, "writer")
+    .add_edge("writer", "formatter")
+    .add_edge("formatter", END)
+    .compile()
+)
 
 # ── Hosted agent entrypoint ─────────────────────────────────────────
 
 host = AzureAIResponsesAgentHost(
-    graph=workflow,
+    graph=graph,
     stream_mode="messages",
     responses_history_count=20,
 )

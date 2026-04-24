@@ -210,6 +210,6 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Vendored runtime copies created by azd prepackage hook (source of truth is /_vendor/)
-agents/_vendor/
-workflows/_vendor/
+# Vendored runtime copies created by azd prepackage hook (source of truth is /vendor/)
+agents/vendor/
+workflows/vendor/

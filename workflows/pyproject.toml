@@ -12,15 +12,19 @@ dependencies = [
     "langchain-openai>=1.2.0",
     "langgraph>=1.1.9",
     "python-dotenv>=1.2.2",
+    "vendor-langchain-azure-ai-runtime",
 ]
 
 [tool.uv]
 prerelease = "allow"
 
+[tool.uv.sources]
+vendor-langchain-azure-ai-runtime = { path = "../vendor" }
+
 [tool.ruff]
 line-length = 120
 target-version = "py312"
-exclude = ["_vendor"]
+exclude = ["vendor"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]

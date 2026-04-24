@@ -578,6 +578,7 @@ dependencies = [
     { name = "langchain-openai" },
     { name = "langgraph" },
     { name = "python-dotenv" },
+    { name = "vendor-langchain-azure-ai-runtime" },
 ]
 
 [package.metadata]
@@ -590,6 +591,7 @@ requires-dist = [
     { name = "langchain-openai", specifier = ">=1.2.0" },
     { name = "langgraph", specifier = ">=1.1.9" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
+    { name = "vendor-langchain-azure-ai-runtime", directory = "../vendor" },
 ]
 
 [[package]]
@@ -2378,6 +2380,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/62/82/d54aa76727bda1b95d9773b3ea0cf4679d07a60977f92aef16e60bbd293e/uuid_utils-0.15.0a3-cp314-cp314t-win_amd64.whl", hash = "sha256:0b95578a3960b926e675dab1bd3d72dea1ca78c7a98f4139b9aaa0b6efc78798", size = 174070, upload-time = "2026-04-16T17:50:32.831Z" },
     { url = "https://files.pythonhosted.org/packages/de/89/b4cafe2eb00b096a822eeae0460bdf895ac5cdf12386c4c04935f544615a/uuid_utils-0.15.0a3-cp314-cp314t-win_arm64.whl", hash = "sha256:f7fb3f950364728c9ff8856e07332388d170e38aae87d88a8c7d81193632cfff", size = 171335, upload-time = "2026-04-16T17:49:36.287Z" },
 ]
+
+[[package]]
+name = "vendor-langchain-azure-ai-runtime"
+version = "0.0.1"
+source = { directory = "../vendor" }
 
 [[package]]
 name = "wrapt"

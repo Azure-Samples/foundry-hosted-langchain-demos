@@ -1,0 +1,21 @@
+[project]
+name = "vendor-langchain-azure-ai-runtime"
+version = "0.0.1"
+description = "Vendored LangGraph hosting runtime from langchain-azure PR #501"
+requires-python = ">=3.12"
+# No dependencies listed — the consuming project (root / workflows) already
+# carries langchain-core, langgraph, langchain-azure-ai, and starlette.
+dependencies = []
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# Map the current directory (vendor/) as the "vendor" package so that
+# `import vendor.langchain_azure_ai_runtime` works when installed.
+[tool.setuptools]
+packages = ["vendor", "vendor.langchain_azure_ai_runtime"]
+
+[tool.setuptools.package-dir]
+"vendor" = "."
+"vendor.langchain_azure_ai_runtime" = "langchain_azure_ai_runtime"

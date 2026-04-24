@@ -49,46 +49,26 @@ azd up
 
 > **Region:** The template restricts deployment to regions that support all features (Responses API, evaluations, red teaming): `eastus2`, `francecentral`, `northcentralus`, `swedencentral`.
 
-### Set up the knowledge base
+## Run locally
 
-After provisioning, create the search indexes and knowledge base:
+### Install dependencies
 
 ```bash
-./write_dot_env.sh  # or .\write_dot_env.ps1 on Windows
-uv run python infra/create-search-indexes.py \
-    --endpoint "$AZURE_AI_SEARCH_SERVICE_ENDPOINT" \
-    --openai-endpoint "$AZURE_OPENAI_ENDPOINT" \
-    --openai-model-deployment "$AZURE_AI_MODEL_DEPLOYMENT_NAME"
+uv sync
 ```
 
-This creates:
-- `hrdocs` and `healthdocs` search indexes with sample data
-- A single knowledge base (`zava-company-kb`) with both indexes as knowledge sources
+### Run the hosted agent locally
 
-### Run locally
-
-1. Sync your `.env` from the azd environment:
-
-    ```bash
-    ./write_dot_env.sh
-    ```
-
-2. Start the local hosted-agent server:
-
-    ```bash
-    azd ai agent run
-    ```
-
-3. Invoke the agent from another terminal:
-
-    ```bash
-    azd ai agent invoke --local "What benefits are there, and when do I need to enroll by?"
-    ```
-
-### Deploy the agent
+Start the local hosted-agent server:
 
 ```bash
-azd deploy
+azd ai agent run
+```
+
+Invoke the agent from another terminal:
+
+```bash
+azd ai agent invoke --local "What benefits are there, and when do I need to enroll by?"
 ```
 
 ### Run the staged demos
@@ -116,8 +96,7 @@ The `workflows/` directory is deployed as a separate Foundry-hosted service and 
 |-------|--------|---------------------|
 | 1 | `workflows/stage1_simple_nodes.py` | Pure data-transformation pipeline (no LLM) |
 | 2 | `workflows/stage2_agent_nodes.py` | Workflow backed by a Foundry model |
-| 3 | `workflows/stage3_as_agent.py` | Writer → formatter pipeline with streaming |
-| 4 | `workflows/stage4_foundry_hosted_as_agent.py` | Hosted workflow entry point |
+| 3 | `workflows/stage3_foundry_hosted_as_agent.py` | Hosted workflow entry point |
 
 ## Evaluation scripts
 

@@ -1,11 +1,11 @@
 """
 Workflow Stage 2: Writer → Formatter workflow using a Foundry-hosted model.
 
-Two LLM tasks in a chain:
-    writer → formatter
+Two LLM nodes in a chain using LangGraph's Graph API (StateGraph):
+    START → writer → formatter → END
 
 The writer drafts a short article, and the formatter styles it with
-Markdown and emojis. Each task only sees the output of the previous task.
+Markdown and emojis. Each node only sees the output of the previous node.
 
 Prerequisites:
     - An Azure OpenAI / Foundry model deployment
@@ -20,13 +20,18 @@ Run:
 
 import asyncio
 import os
+from typing import TypedDict
 
 from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-from langgraph.func import entrypoint, task
+from langgraph.graph import END, START, StateGraph
 
 load_dotenv(override=True)
+
+
+class TextState(TypedDict):
+    text: str
 
 
 async def main():
@@ -42,8 +47,7 @@ async def main():
         use_responses_api=True,
     )
 
-    @task
-    async def writer(topic: str) -> str:
+    async def writer(state: TextState) -> dict:
         """Draft a short article based on the given topic."""
         response = await llm.ainvoke(
             [
@@ -55,13 +59,12 @@ async def main():
                         "Focus on accuracy and readability."
                     ),
                 },
-                {"role": "user", "content": topic},
+                {"role": "user", "content": state["text"]},
             ]
         )
-        return response.content
+        return {"text": response.content}
 
-    @task
-    async def formatter(text: str) -> str:
+    async def formatter(state: TextState) -> dict:
         """Format text with Markdown and emojis."""
         response = await llm.ainvoke(
             [
@@ -74,22 +77,26 @@ async def main():
                         "Preserve the original meaning and content."
                     ),
                 },
-                {"role": "user", "content": text},
+                {"role": "user", "content": state["text"]},
             ]
         )
-        return response.content
+        return {"text": response.content}
 
-    @entrypoint()
-    async def workflow(topic: str) -> str:
-        """Chain: Writer → Formatter."""
-        draft = await writer(topic)
-        return await formatter(draft)
+    graph = (
+        StateGraph(TextState)
+        .add_node(writer)
+        .add_node(formatter)
+        .add_edge(START, "writer")
+        .add_edge("writer", "formatter")
+        .add_edge("formatter", END)
+        .compile()
+    )
 
     prompt = 'Write a 2-sentence LinkedIn post: "Why your AI pilot looks good but fails in production."'
     print(f"\nPrompt: {prompt}\n")
-    result = await workflow.ainvoke(prompt)
+    result = await graph.ainvoke({"text": prompt})
     print("Output:")
-    print(result)
+    print(result["text"])
 
     await credential.close()
 

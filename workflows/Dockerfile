@@ -8,12 +8,12 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 COPY pyproject.toml uv.lock ./
 
+# Vendored LangGraph hosting runtime (path dependency at ../vendor)
+COPY vendor/ /vendor/
+
 RUN uv sync --locked --no-dev
 
-COPY stage4_foundry_hosted_as_agent.py .
-
-# Vendored LangGraph hosting runtime (from langchain-azure PR #501)
-COPY _vendor/ /app/_vendor/
+COPY stage3_foundry_hosted_as_agent.py .
 
 ENV PATH="/app/.venv/bin:$PATH"
 
@@ -22,4 +22,4 @@ EXPOSE 8088
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8088/health')" || exit 1
 
-CMD ["python", "-u", "stage4_foundry_hosted_as_agent.py"]
+CMD ["python", "-u", "stage3_foundry_hosted_as_agent.py"]

@@ -25,7 +25,7 @@ Quick start::
 
     ```python
     from langgraph.graph import StateGraph, MessagesState, START, END
-    from _vendor.langchain_azure_ai_runtime import (
+    from vendor.langchain_azure_ai_runtime import (
         AzureAIResponsesAgentHost,
     )
 
@@ -46,7 +46,7 @@ Quick start::
 If you have a `langgraph.json` file, you can load the graph with:
 
     ```python
-    from _vendor.langchain_azure_ai_runtime import (
+    from vendor.langchain_azure_ai_runtime import (
         AzureAIResponsesAgentHost,
     )
 
@@ -75,7 +75,7 @@ import importlib
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from _vendor.langchain_azure_ai_runtime._invoke_host import (
+    from vendor.langchain_azure_ai_runtime._invoke_host import (
         AzureAIInvokeAgentHost,
         GraphInvocationInput,
         InvokeInputParser,
@@ -83,7 +83,7 @@ if TYPE_CHECKING:
         InvokeOutputParser,
         InvokeOutputResponse,
     )
-    from _vendor.langchain_azure_ai_runtime._responses_host import (
+    from vendor.langchain_azure_ai_runtime._responses_host import (
         AzureAIResponsesAgentHost,
         ResponsesInputContext,
         ResponsesInputParser,
@@ -108,18 +108,18 @@ __all__ = [
 ]
 
 _module_lookup = {
-    "AzureAIInvokeAgentHost": "_vendor.langchain_azure_ai_runtime._invoke_host",
-    "GraphInvocationInput": "_vendor.langchain_azure_ai_runtime._invoke_host",
-    "AzureAIResponsesAgentHost": "_vendor.langchain_azure_ai_runtime._responses_host",
-    "InvokeInputRequest": "_vendor.langchain_azure_ai_runtime._invoke_host",
-    "InvokeInputParser": "_vendor.langchain_azure_ai_runtime._invoke_host",
-    "InvokeOutputParser": "_vendor.langchain_azure_ai_runtime._invoke_host",
-    "InvokeOutputResponse": "_vendor.langchain_azure_ai_runtime._invoke_host",
-    "ResponsesInputRequest": "_vendor.langchain_azure_ai_runtime._responses_host",
-    "ResponsesInputContext": "_vendor.langchain_azure_ai_runtime._responses_host",
-    "ResponsesInputParser": "_vendor.langchain_azure_ai_runtime._responses_host",
-    "ResponsesOutputItem": "_vendor.langchain_azure_ai_runtime._responses_host",
-    "ResponsesOutputParser": "_vendor.langchain_azure_ai_runtime._responses_host",
+    "AzureAIInvokeAgentHost": "vendor.langchain_azure_ai_runtime._invoke_host",
+    "GraphInvocationInput": "vendor.langchain_azure_ai_runtime._invoke_host",
+    "AzureAIResponsesAgentHost": "vendor.langchain_azure_ai_runtime._responses_host",
+    "InvokeInputRequest": "vendor.langchain_azure_ai_runtime._invoke_host",
+    "InvokeInputParser": "vendor.langchain_azure_ai_runtime._invoke_host",
+    "InvokeOutputParser": "vendor.langchain_azure_ai_runtime._invoke_host",
+    "InvokeOutputResponse": "vendor.langchain_azure_ai_runtime._invoke_host",
+    "ResponsesInputRequest": "vendor.langchain_azure_ai_runtime._responses_host",
+    "ResponsesInputContext": "vendor.langchain_azure_ai_runtime._responses_host",
+    "ResponsesInputParser": "vendor.langchain_azure_ai_runtime._responses_host",
+    "ResponsesOutputItem": "vendor.langchain_azure_ai_runtime._responses_host",
+    "ResponsesOutputParser": "vendor.langchain_azure_ai_runtime._responses_host",
 }
 
 

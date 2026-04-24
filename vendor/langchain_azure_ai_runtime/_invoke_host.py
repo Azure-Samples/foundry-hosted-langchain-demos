@@ -434,7 +434,7 @@ class AzureAIInvokeAgentHost(Generic[GraphInputT, GraphContextT, GraphOutputT]):
             # Custom config file path
             host = AzureAIInvokeAgentHost.from_config(path="/app/langgraph.json")
         """
-        from _vendor.langchain_azure_ai_runtime._config import (
+        from vendor.langchain_azure_ai_runtime._config import (
             load_graph_from_langgraph_config,
         )
 

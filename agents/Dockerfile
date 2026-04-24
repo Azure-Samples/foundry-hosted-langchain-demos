@@ -13,7 +13,7 @@ RUN uv sync --locked --no-dev
 COPY stage4_foundry_hosted.py .
 
 # Vendored LangGraph hosting runtime (from langchain-azure PR #501)
-COPY _vendor/ /app/_vendor/
+COPY vendor/ /app/vendor/
 
 ENV PATH="/app/.venv/bin:$PATH"
 

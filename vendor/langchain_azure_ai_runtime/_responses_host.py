@@ -1160,7 +1160,7 @@ class AzureAIResponsesAgentHost(Generic[GraphStateT, GraphContextT]):
             # Custom config file path
             host = AzureAIResponsesAgentHost.from_config(path="/app/langgraph.json")
         """
-        from _vendor.langchain_azure_ai_runtime._config import (
+        from vendor.langchain_azure_ai_runtime._config import (
             load_graph_from_langgraph_config,
         )
 
