@@ -52,12 +52,15 @@ _credential = DefaultAzureCredential()
 _token_provider = get_bearer_token_provider(_credential, "https://ai.azure.com/.default")
 
 
-class _AzureTokenAuth(httpx.Auth):
-    def __init__(self, provider):
-        self._provider = provider
+class ToolboxAuth(httpx.Auth):
+    """httpx Auth that injects a fresh bearer token for the Foundry Toolbox MCP endpoint."""
+
+    def __init__(self, token_provider) -> None:
+        self._token_provider = token_provider
 
     def auth_flow(self, request):
-        request.headers["Authorization"] = f"Bearer {self._provider()}"
+        """Add Authorization header with a fresh token on every request."""
+        request.headers["Authorization"] = f"Bearer {self._token_provider()}"
         yield request
 
 # Workaround: Azure AI Search KB MCP returns resource content with uri: null
@@ -113,8 +116,8 @@ def get_current_date() -> str:
 def get_enrollment_deadline_info() -> dict:
     """Return enrollment timeline details for health insurance plans."""
     return {
-        "benefits_enrollment_opens": "2026-11-11",
-        "benefits_enrollment_closes": "2026-11-30",
+        "enrollment_opens": "2026-11-11",
+        "enrollment_closes": "2026-11-30",
     }
 
 
@@ -152,7 +155,7 @@ async def _build_agent():
                 "url": toolbox_endpoint,
                 "transport": "streamable_http",
                 "headers": extra_headers,
-                "auth": _AzureTokenAuth(_token_provider),
+                "auth": ToolboxAuth(_token_provider),
             }
         }
     )

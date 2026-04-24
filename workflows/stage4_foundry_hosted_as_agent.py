@@ -1,12 +1,11 @@
 """
-Workflow demo: Multi-step workflow hosted on Azure AI Foundry.
+Workflow demo: Writer → Formatter workflow hosted on Azure AI Foundry.
 
-Three LLM nodes in a chain:
-    writer → legal_reviewer → formatter
+Two LLM tasks in a chain:
+    writer → formatter
 
-The writer creates a slogan, the legal reviewer checks it, and the formatter
-styles it for terminal output. Each node only sees the output of the
-previous node.
+The writer drafts a short article, and the formatter styles it with Markdown and emojis.
+Each task only sees the output of the previous task.
 
 This module uses AzureAIResponsesAgentHost from a vendored copy of
 https://github.com/langchain-ai/langchain-azure/pull/501 which provides
@@ -24,7 +23,8 @@ from dotenv import load_dotenv
 from langchain_azure_ai.callbacks.tracers import enable_auto_tracing
 from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
-from langgraph.graph import END, START, MessagesState, StateGraph
+from langgraph.func import entrypoint, task
+from langgraph.graph import MessagesState
 
 from _vendor.langchain_azure_ai_runtime import AzureAIResponsesAgentHost
 
@@ -57,16 +57,18 @@ llm = ChatOpenAI(
 )
 
 
+@task
 async def writer(state: MessagesState) -> MessagesState:
-    """Create a slogan based on the user's input."""
+    """Draft a short article based on the given topic."""
     user_text = state["messages"][-1].content
     response = await llm.ainvoke(
         [
             {
                 "role": "system",
                 "content": (
-                    "You are an excellent slogan writer. "
-                    "You create new slogans based on the given topic."
+                    "You are a concise content writer. "
+                    "Write a clear, engaging short article (2-3 paragraphs) based on the user's topic. "
+                    "Focus on accuracy and readability."
                 ),
             },
             {"role": "user", "content": user_text},
@@ -75,35 +77,19 @@ async def writer(state: MessagesState) -> MessagesState:
     return {"messages": [AIMessage(content=response.content)]}
 
 
-async def legal_reviewer(state: MessagesState) -> MessagesState:
-    """Review and correct the slogan for legal compliance."""
-    previous_output = state["messages"][-1].content
-    response = await llm.ainvoke(
-        [
-            {
-                "role": "system",
-                "content": (
-                    "You are an excellent legal reviewer. "
-                    "Make necessary corrections to the slogan so that it is legally compliant."
-                ),
-            },
-            {"role": "user", "content": previous_output},
-        ]
-    )
-    return {"messages": [AIMessage(content=response.content)]}
-
-
+@task
 async def formatter(state: MessagesState) -> MessagesState:
-    """Format the slogan with Markdown for display."""
+    """Format text with Markdown and emojis."""
     previous_output = state["messages"][-1].content
     response = await llm.ainvoke(
         [
             {
                 "role": "system",
                 "content": (
-                    "You are an excellent content formatter. "
-                    "You take the slogan and format it in Markdown with bold text "
-                    "and decorative elements. Do not use ANSI escape codes or terminal color codes."
+                    "You are an expert content formatter. "
+                    "Take the provided text and format it with Markdown (bold, headers, lists) "
+                    "and relevant emojis to make it visually engaging. "
+                    "Preserve the original meaning and content."
                 ),
             },
             {"role": "user", "content": previous_output},
@@ -112,22 +98,17 @@ async def formatter(state: MessagesState) -> MessagesState:
     return {"messages": [AIMessage(content=response.content)]}
 
 
-# ── Build the workflow graph ────────────────────────────────────────
+@entrypoint()
+async def workflow(state: MessagesState) -> MessagesState:
+    """Chain: Writer → Formatter."""
+    result = await writer(state)
+    return await formatter(result)
 
-builder = StateGraph(MessagesState)
-builder.add_node("writer", writer)
-builder.add_node("legal_reviewer", legal_reviewer)
-builder.add_node("formatter", formatter)
-builder.add_edge(START, "writer")
-builder.add_edge("writer", "legal_reviewer")
-builder.add_edge("legal_reviewer", "formatter")
-builder.add_edge("formatter", END)
-graph = builder.compile()
 
 # ── Hosted agent entrypoint ─────────────────────────────────────────
 
 host = AzureAIResponsesAgentHost(
-    graph=graph,
+    graph=workflow,
     stream_mode="messages",
     responses_history_count=20,
 )

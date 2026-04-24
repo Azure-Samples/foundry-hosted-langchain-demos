@@ -18,77 +18,81 @@ Run:
     uv run python workflows/stage2_agent_nodes.py
 """
 
+import asyncio
 import os
 
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langgraph.func import entrypoint, task
 
 load_dotenv(override=True)
 
-_credential = DefaultAzureCredential()
-_token_provider = get_bearer_token_provider(
-    _credential, "https://cognitiveservices.azure.com/.default"
-)
 
-llm = ChatOpenAI(
-    base_url=f"{os.environ['AZURE_OPENAI_ENDPOINT'].rstrip('/')}/openai/v1/",
-    api_key=_token_provider,
-    model=os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"],
-    use_responses_api=True,
-)
-
-
-@task
-def writer(topic: str) -> str:
-    """Draft a short article based on the given topic."""
-    response = llm.invoke(
-        [
-            {
-                "role": "system",
-                "content": (
-                    "You are a concise content writer. "
-                    "Write a clear, engaging short article (2-3 paragraphs) based on the user's topic. "
-                    "Focus on accuracy and readability."
-                ),
-            },
-            {"role": "user", "content": topic},
-        ]
+async def main():
+    credential = DefaultAzureCredential()
+    token_provider = get_bearer_token_provider(
+        credential, "https://cognitiveservices.azure.com/.default"
     )
-    return response.content
 
-
-@task
-def formatter(text: str) -> str:
-    """Format text with Markdown and emojis."""
-    response = llm.invoke(
-        [
-            {
-                "role": "system",
-                "content": (
-                    "You are an expert content formatter. "
-                    "Take the provided text and format it with Markdown (bold, headers, lists) "
-                    "and relevant emojis to make it visually engaging. "
-                    "Preserve the original meaning and content."
-                ),
-            },
-            {"role": "user", "content": text},
-        ]
+    llm = ChatOpenAI(
+        base_url=f"{os.environ['AZURE_OPENAI_ENDPOINT'].rstrip('/')}/openai/v1/",
+        api_key=token_provider,
+        model=os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"],
+        use_responses_api=True,
     )
-    return response.content
 
+    @task
+    async def writer(topic: str) -> str:
+        """Draft a short article based on the given topic."""
+        response = await llm.ainvoke(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a concise content writer. "
+                        "Write a clear, engaging short article (2-3 paragraphs) based on the user's topic. "
+                        "Focus on accuracy and readability."
+                    ),
+                },
+                {"role": "user", "content": topic},
+            ]
+        )
+        return response.content
 
-@entrypoint()
-def workflow(topic: str) -> str:
-    """Chain: Writer → Formatter."""
-    draft = writer(topic).result()
-    return formatter(draft).result()
+    @task
+    async def formatter(text: str) -> str:
+        """Format text with Markdown and emojis."""
+        response = await llm.ainvoke(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an expert content formatter. "
+                        "Take the provided text and format it with Markdown (bold, headers, lists) "
+                        "and relevant emojis to make it visually engaging. "
+                        "Preserve the original meaning and content."
+                    ),
+                },
+                {"role": "user", "content": text},
+            ]
+        )
+        return response.content
+
+    @entrypoint()
+    async def workflow(topic: str) -> str:
+        """Chain: Writer → Formatter."""
+        draft = await writer(topic)
+        return await formatter(draft)
+
+    prompt = 'Write a 2-sentence LinkedIn post: "Why your AI pilot looks good but fails in production."'
+    print(f"\nPrompt: {prompt}\n")
+    result = await workflow.ainvoke(prompt)
+    print("Output:")
+    print(result)
+
+    await credential.close()
 
 
 if __name__ == "__main__":
-    prompt = 'Write a 2-sentence LinkedIn post: "Why your AI pilot looks good but fails in production."'
-    print(f"\nPrompt: {prompt}\n")
-    result = workflow.invoke(prompt)
-    print("Output:")
-    print(result)
+    asyncio.run(main())

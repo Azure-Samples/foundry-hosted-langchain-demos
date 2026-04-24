@@ -24,7 +24,8 @@ import os
 from datetime import date
 
 import httpx
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+import mcp.types
+from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain_core.tools import tool
@@ -44,8 +45,9 @@ class _AzureTokenAuth(httpx.Auth):
     def __init__(self, provider) -> None:
         self._provider = provider
 
-    def auth_flow(self, request):
-        request.headers["Authorization"] = f"Bearer {self._provider()}"
+    async def async_auth_flow(self, request):
+        token = await self._provider()
+        request.headers["Authorization"] = f"Bearer {token}"
         yield request
 
 
@@ -54,8 +56,8 @@ def get_enrollment_deadline_info() -> dict:
     """Return enrollment timeline details for health insurance plans."""
     logger.info("[tool] get_enrollment_deadline_info()")
     return {
-        "benefits_enrollment_opens": "2026-11-11",
-        "benefits_enrollment_closes": "2026-11-30",
+        "enrollment_opens": "2026-11-11",
+        "enrollment_closes": "2026-11-30",
     }
 
 
@@ -74,6 +76,26 @@ def _sanitize_tools(tools: list) -> list:
                 props[field_name] = {"type": "string"}
             schema["properties"] = props
     return tools
+
+
+# Workaround: Azure AI Search KB MCP returns resource content with uri: null
+# or uri: "", which fails pydantic AnyUrl validation in the MCP SDK.
+for _cls in [
+    mcp.types.ResourceContents,
+    mcp.types.TextResourceContents,
+    mcp.types.BlobResourceContents,
+]:
+    _cls.model_fields["uri"].annotation = str | None
+    _cls.model_fields["uri"].default = None
+    _cls.model_fields["uri"].metadata = []
+for _cls in [
+    mcp.types.ResourceContents,
+    mcp.types.TextResourceContents,
+    mcp.types.BlobResourceContents,
+    mcp.types.EmbeddedResource,
+    mcp.types.CallToolResult,
+]:
+    _cls.model_rebuild(force=True)
 
 
 async def main() -> None:
@@ -137,7 +159,7 @@ async def main() -> None:
         console.print("\n[bold]Agent answer:[/bold]")
         console.print(Markdown(response.text))
     finally:
-        credential.close()
+        await credential.close()
 
 
 if __name__ == "__main__":

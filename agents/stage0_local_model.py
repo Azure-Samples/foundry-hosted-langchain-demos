@@ -35,14 +35,14 @@ def get_enrollment_deadline_info() -> dict:
     """Return enrollment timeline details for health insurance plans."""
     logger.info("[tool] get_enrollment_deadline_info()")
     return {
-        "benefits_enrollment_opens": "2026-11-11",
-        "benefits_enrollment_closes": "2026-11-30",
+        "enrollment_opens": "2026-11-11",
+        "enrollment_closes": "2026-11-30",
     }
 
 client = ChatOpenAI(
     base_url="http://localhost:11434/v1/",
     api_key="ollama",  # any non-empty string
-    model="qwen3.5:9b",
+    model="qwen3.5:4b",
     use_responses_api=True,
 )
 

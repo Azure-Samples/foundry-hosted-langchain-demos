@@ -43,8 +43,8 @@ def get_enrollment_deadline_info() -> dict:
     """Return enrollment timeline details for health insurance plans."""
     logger.info("[tool] get_enrollment_deadline_info()")
     return {
-        "benefits_enrollment_opens": "2026-11-11",
-        "benefits_enrollment_closes": "2026-11-30",
+        "enrollment_opens": "2026-11-11",
+        "enrollment_closes": "2026-11-30",
     }
 
 
@@ -58,6 +58,28 @@ class ToolboxAuth(httpx.Auth):
         token = await self._token_provider()
         request.headers["Authorization"] = f"Bearer {token}"
         yield request
+
+
+def _sanitize_tools(tools: list) -> list:
+    """Fix MCP tool names/schemas for Responses API compatibility."""
+    for tool_obj in tools:
+        tool_obj.handle_tool_error = True
+        sanitized = re.sub(r"[^a-zA-Z0-9_-]", "_", tool_obj.name)
+        if sanitized != tool_obj.name:
+            logger.info("Renamed tool %r -> %r for Responses API compatibility", tool_obj.name, sanitized)
+            tool_obj.name = sanitized
+        schema = tool_obj.args_schema if isinstance(tool_obj.args_schema, dict) else None
+        if schema is None:
+            continue
+        if schema.get("type") == "object" and "properties" not in schema:
+            schema["properties"] = {}
+        props = schema.get("properties", {})
+        required = schema.get("required", [])
+        if required and not props:
+            for field_name in required:
+                props[field_name] = {"type": "string"}
+            schema["properties"] = props
+    return tools
 
 
 # Workaround: Azure AI Search KB MCP returns resource content with uri: null
@@ -113,13 +135,7 @@ async def main() -> None:
                 }
             }
         )
-        toolbox_tools = await toolbox_client.get_tools(server_name="toolbox")
-        for t in toolbox_tools:
-            t.handle_tool_error = True
-            sanitized = re.sub(r"[^a-zA-Z0-9_-]", "_", t.name)
-            if sanitized != t.name:
-                logger.info("Renamed tool %r -> %r for Responses API compatibility", t.name, sanitized)
-                t.name = sanitized
+        toolbox_tools = _sanitize_tools(await toolbox_client.get_tools(server_name="toolbox"))
 
         agent = create_agent(
             model=client,
