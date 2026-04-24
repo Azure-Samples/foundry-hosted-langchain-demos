@@ -3,6 +3,10 @@ Internal HR Helper — An agent with tools to answer health insurance questions.
 Uses LangGraph with Microsoft Foundry.
 Ready for deployment to Foundry Hosted Agent service.
 
+This module uses AzureAIResponsesAgentHost from a vendored copy of
+https://github.com/langchain-ai/langchain-azure/pull/501 which provides
+first-class LangGraph hosting support for Azure AI Foundry.
+
 Run using:
     azd ai agent run
 """
@@ -15,25 +19,15 @@ from datetime import date
 
 import httpx
 import mcp.types
-from azure.ai.agentserver.responses import (
-    CreateResponse,
-    ResponseContext,
-    ResponsesAgentServerHost,
-    ResponsesServerOptions,
-    TextResponse,
-)
-from azure.ai.agentserver.responses.models import (
-    MessageContentInputTextContent,
-    MessageContentOutputTextContent,
-)
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain_azure_ai.callbacks.tracers import enable_auto_tracing
-from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.tools import tool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
+
+from _vendor.langchain_azure_ai_runtime import AzureAIResponsesAgentHost
 
 load_dotenv(override=True)
 
@@ -141,14 +135,9 @@ If the tools do not provide enough information, say so clearly and do not invent
 
 # ── Agent setup ─────────────────────────────────────────────────────
 
-_agent = None
-_toolbox_client = None
-_agent_lock = asyncio.Lock()
-
 
 async def _build_agent():
     """Build the LangGraph agent with toolbox + local tools."""
-    global _toolbox_client
 
     # The hosted platform auto-injects FOUNDRY_AGENT_TOOLBOX_ENDPOINT; fall back to
     # constructing it manually for local development.
@@ -157,7 +146,7 @@ async def _build_agent():
         f"{PROJECT_ENDPOINT.rstrip('/')}/toolboxes/{TOOLBOX_NAME}/mcp?api-version=v1",
     )
     extra_headers = {"Foundry-Features": TOOLBOX_FEATURES} if TOOLBOX_FEATURES else {}
-    _toolbox_client = MultiServerMCPClient(
+    toolbox_client = MultiServerMCPClient(
         {
             "toolbox": {
                 "url": toolbox_endpoint,
@@ -170,7 +159,7 @@ async def _build_agent():
 
     toolbox_tools = []
     try:
-        toolbox_tools = _sanitize_tools(await _toolbox_client.get_tools())
+        toolbox_tools = _sanitize_tools(await toolbox_client.get_tools())
         logger.info("Loaded %d toolbox tools", len(toolbox_tools))
     except Exception as exc:
         logger.warning("Toolbox startup skipped: %s", exc)
@@ -188,74 +177,19 @@ async def _build_agent():
     return create_agent(model=llm, tools=all_tools, system_prompt=SYSTEM_PROMPT)
 
 
-async def _get_agent():
-    global _agent
-    if _agent is not None:
-        return _agent
-    async with _agent_lock:
-        if _agent is None:
-            _agent = await _build_agent()
-    return _agent
+# ── Hosted agent entrypoint ─────────────────────────────────────────
 
 
-# ── Responses protocol handler ──────────────────────────────────────
-
-
-def _history_to_langchain_messages(history: list) -> list:
-    """Convert responses-protocol history items to LangChain messages."""
-    messages = []
-    for item in history:
-        if hasattr(item, "content") and item.content:
-            for content in item.content:
-                if isinstance(content, MessageContentOutputTextContent) and content.text:
-                    messages.append(AIMessage(content=content.text))
-                elif isinstance(content, MessageContentInputTextContent) and content.text:
-                    messages.append(HumanMessage(content=content.text))
-    return messages
-
-
-app = ResponsesAgentServerHost(
-    options=ResponsesServerOptions(default_fetch_history_count=20)
-)
-
-
-@app.response_handler
-async def handle_create(
-    request: CreateResponse,
-    context: ResponseContext,
-    cancellation_signal: asyncio.Event,
-):
-    """Run the LangGraph agent and stream the response."""
-
-    async def run_agent():
-        try:
-            agent = await _get_agent()
-            try:
-                history = await context.get_history()
-            except Exception:
-                history = []
-            current_input = await context.get_input_text() or "Hello!"
-
-            lc_messages = _history_to_langchain_messages(history)
-            lc_messages.append(HumanMessage(content=current_input))
-
-            result = await agent.ainvoke({"messages": lc_messages})
-
-            # With use_responses_api, content may be a list of content blocks.
-            raw = result["messages"][-1].content
-            if isinstance(raw, list):
-                yield "".join(
-                    block.get("text", "") if isinstance(block, dict) else str(block)
-                    for block in raw
-                )
-            else:
-                yield raw or ""
-        except Exception as exc:
-            logger.exception("run_agent failed")
-            yield f"[ERROR] {type(exc).__name__}: {exc}"
-
-    return TextResponse(context, request, text=run_agent())
+async def _main():
+    """Build the agent and start the AzureAIResponsesAgentHost."""
+    graph = await _build_agent()
+    host = AzureAIResponsesAgentHost(
+        graph=graph,
+        stream_mode="messages",
+        responses_history_count=20,
+    )
+    host.run()
 
 
 if __name__ == "__main__":
-    app.run()
+    asyncio.run(_main())
