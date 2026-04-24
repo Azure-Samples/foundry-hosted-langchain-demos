@@ -230,6 +230,30 @@ resource projectCognitiveServicesUserRoleAssignment 'Microsoft.Authorization/rol
   }
 }
 
+// Log Analytics Reader for the Foundry Project managed identity.
+// Required for continuous evaluation to query Application Insights traces.
+resource projectLogAnalyticsReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (enableMonitoring) {
+  name: guid(subscription().id, resourceGroup().id, aiAccount::project.name, '73c42c96-874c-492b-b04d-ab87d138a893')
+  properties: {
+    principalId: aiAccount::project.identity.principalId
+    principalType: 'ServicePrincipal'
+    // Log Analytics Reader
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', '73c42c96-874c-492b-b04d-ab87d138a893')
+  }
+}
+
+// Azure AI User for the developer, scoped to the Foundry Project.
+// Project scope is sufficient for creating/running agents and calling models via the project endpoint.
+resource localUserAzureAIUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: aiAccount::project
+  name: guid(subscription().id, resourceGroup().id, principalId, '53ca6127-db72-4b80-b1b0-d745d6d5456d')
+  properties: {
+    principalId: principalId
+    principalType: principalType
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')
+  }
+}
+
 
 // All connections are now created directly within their respective resource modules
 // using the centralized ./connection.bicep module

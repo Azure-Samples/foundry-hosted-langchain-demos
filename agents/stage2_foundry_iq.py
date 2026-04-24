@@ -41,7 +41,7 @@ console = Console()
 logger = logging.getLogger("stage2")
 
 
-class _AzureTokenAuth(httpx.Auth):
+class AzureTokenAuth(httpx.Auth):
     def __init__(self, provider) -> None:
         self._provider = provider
 
@@ -126,7 +126,7 @@ async def main() -> None:
                     "url": mcp_url,
                     "transport": "streamable_http",
                     "headers": {"Accept": "application/json, text/event-stream"},
-                    "auth": _AzureTokenAuth(search_token_provider),
+                    "auth": AzureTokenAuth(search_token_provider),
                 }
             }
         )
@@ -171,3 +171,4 @@ if __name__ == "__main__":
     logging.getLogger("azure.identity").setLevel(logging.WARNING)
     logging.getLogger("azure.core").setLevel(logging.WARNING)
     asyncio.run(main())
+    
