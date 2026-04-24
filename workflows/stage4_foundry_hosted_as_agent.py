@@ -7,24 +7,26 @@ Three LLM tasks in a chain:
 The writer creates a slogan, the legal reviewer checks it, and the formatter
 styles it for terminal output. Each task only sees the output of the
 previous task.
+
+This module uses AzureAIResponsesAgentHost from a vendored copy of
+https://github.com/langchain-ai/langchain-azure/pull/501 which provides
+first-class LangGraph hosting support for Azure AI Foundry.
 """
 
-import asyncio
 import logging
 import os
 
-from azure.ai.agentserver.responses import (
-    CreateResponse,
-    ResponseContext,
-    ResponsesAgentServerHost,
-    ResponsesServerOptions,
-    TextResponse,
-)
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
 from langchain_azure_ai.callbacks.tracers import enable_auto_tracing
 from langchain_openai import ChatOpenAI
 from langgraph.func import entrypoint, task
+
+from _vendor.langchain_azure_ai_runtime import (
+    AzureAIResponsesAgentHost,
+    ResponsesInputContext,
+    ResponsesInputRequest,
+)
 
 load_dotenv(dotenv_path="../.env", override=True)
 
@@ -117,39 +119,33 @@ def workflow(user_input: str) -> str:
     return formatter(reviewed).result()
 
 
-# ── Responses protocol handler ──────────────────────────────────────
+# ── Custom parsers for str-based workflow graph ─────────────────────
 
-app = ResponsesAgentServerHost(
-    options=ResponsesServerOptions(default_fetch_history_count=20)
+
+async def workflow_input_parser(
+    request: ResponsesInputRequest,
+    context: ResponsesInputContext,
+) -> str:
+    """Extract user text from the Foundry request as a plain string."""
+    return await context.get_input_text() or "Hello!"
+
+
+def workflow_output_parser(item: object) -> str:
+    """Extract text from a workflow stream item (values mode yields str)."""
+    if isinstance(item, str):
+        return item
+    return ""
+
+
+# ── Hosted agent entrypoint ─────────────────────────────────────────
+
+host = AzureAIResponsesAgentHost(
+    graph=workflow,
+    stream_mode="values",
+    responses_history_count=20,
+    input_parser=workflow_input_parser,
+    output_parser=workflow_output_parser,
 )
 
-
-@app.response_handler
-async def handle_create(
-    request: CreateResponse,
-    context: ResponseContext,
-    cancellation_signal: asyncio.Event,
-):
-    """Run the workflow and stream the response."""
-
-    async def run_workflow():
-        try:
-            current_input = await context.get_input_text() or "Hello!"
-            result = await workflow.ainvoke(current_input)
-
-            if isinstance(result, list):
-                yield "".join(
-                    block.get("text", "") if isinstance(block, dict) else str(block)
-                    for block in result
-                )
-            else:
-                yield result or ""
-        except Exception as exc:
-            logger.exception("run_workflow failed")
-            yield f"[ERROR] {type(exc).__name__}: {exc}"
-
-    return TextResponse(context, request, text=run_workflow())
-
-
 if __name__ == "__main__":
-    app.run()
+    host.run()

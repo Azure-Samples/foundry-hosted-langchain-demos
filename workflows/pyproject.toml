@@ -20,6 +20,7 @@ prerelease = "allow"
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+exclude = ["_vendor"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
