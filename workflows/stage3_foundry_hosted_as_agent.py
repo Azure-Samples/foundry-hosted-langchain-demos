@@ -42,7 +42,7 @@ enable_auto_tracing(
     auto_configure_azure_monitor=True,
     enable_content_recording=False,
     trace_all_langgraph_nodes=True,
-    agent_id="slogan-workflow",
+    agent_id="writer-workflow",
 )
 
 PROJECT_ENDPOINT = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
