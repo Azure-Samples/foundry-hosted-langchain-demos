@@ -1,7 +1,7 @@
 [project]
 name = "foundry-hosted-langchain-agents"
 version = "0.1.0"
-description = "LangGraph-first hosted agent for Microsoft Foundry"
+description = "Langchain hosted agent for Microsoft Foundry"
 requires-python = ">=3.12"
 dependencies = [
     "azure-ai-agentserver-responses==1.0.0b5",

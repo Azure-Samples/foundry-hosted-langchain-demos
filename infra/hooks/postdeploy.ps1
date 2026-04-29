@@ -7,7 +7,7 @@ if (-not $env:AZURE_AI_SEARCH_SERVICE_NAME -or -not $env:AZURE_SUBSCRIPTION_ID -
 
 $searchScope = "/subscriptions/$env:AZURE_SUBSCRIPTION_ID/resourceGroups/$env:AZURE_RESOURCE_GROUP/providers/Microsoft.Search/searchServices/$env:AZURE_AI_SEARCH_SERVICE_NAME"
 
-$services = @("hosted-langgraph-agent", "hosted-langgraph-workflow")
+$services = @("hosted-langchain-agent", "hosted-langgraph-workflow")
 foreach ($service in $services) {
     try {
         $agentJson = azd ai agent show $service 2>$null | ConvertFrom-Json

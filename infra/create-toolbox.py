@@ -1,5 +1,4 @@
-"""Create (or update) the Foundry Toolbox with web search, code interpreter,
-and Foundry IQ knowledge base tools.
+"""Create (or update) the Foundry Toolbox with web search and code interpreter tools.
 
 Usage:
     uv run python infra/create-toolbox.py
@@ -7,9 +6,6 @@ Usage:
 Requires environment variables:
     FOUNDRY_PROJECT_ENDPOINT  — Foundry project endpoint URL
     CUSTOM_FOUNDRY_AGENT_TOOLBOX_NAME — Toolbox name (default: hr-agent-tools)
-    AZURE_AI_SEARCH_SERVICE_ENDPOINT — Azure AI Search service URL
-    AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME — Knowledge base name (default: zava-company-kb)
-    AZURE_AI_SEARCH_KB_MCP_CONNECTION_NAME — KB MCP connection name (default: kb-mcp-connection)
 """
 
 import os
@@ -34,21 +30,14 @@ def _headers(credential: DefaultAzureCredential) -> dict:
     }
 
 
-def create_or_update_toolbox(endpoint: str, toolbox_name: str, kb_mcp_url: str, kb_mcp_connection_name: str) -> None:
-    """Create a new version of the toolbox with web search, code interpreter, and KB MCP tools."""
+def create_or_update_toolbox(endpoint: str, toolbox_name: str) -> None:
+    """Create a new version of the toolbox with web search and code interpreter tools."""
     credential = DefaultAzureCredential()
     base_url = f"{endpoint.rstrip('/')}/toolboxes/{toolbox_name}"
 
     tools = [
         {"type": "web_search", "name": "web_search"},
         {"type": "code_interpreter", "name": "code_interpreter"},
-        {
-            "type": "mcp",
-            "server_label": "knowledge-base",
-            "server_url": kb_mcp_url,
-            "project_connection_id": kb_mcp_connection_name,
-            "allowed_tools": ["knowledge_base_retrieve"],
-        },
     ]
 
     # 1. Create a new version
@@ -84,13 +73,5 @@ def create_or_update_toolbox(endpoint: str, toolbox_name: str, kb_mcp_url: str, 
 if __name__ == "__main__":
     endpoint = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
     toolbox_name = os.environ.get("CUSTOM_FOUNDRY_AGENT_TOOLBOX_NAME", "hr-agent-tools")
-    search_endpoint = os.environ["AZURE_AI_SEARCH_SERVICE_ENDPOINT"]
-    kb_name = os.environ.get("AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME", "zava-company-kb")
-    kb_mcp_connection_name = os.environ.get("AZURE_AI_SEARCH_KB_MCP_CONNECTION_NAME", "kb-mcp-connection")
 
-    kb_mcp_url = (
-        f"{search_endpoint.rstrip('/')}/knowledgebases/{kb_name}"
-        f"/mcp?api-version=2025-11-01-preview"
-    )
-
-    create_or_update_toolbox(endpoint, toolbox_name, kb_mcp_url, kb_mcp_connection_name)
+    create_or_update_toolbox(endpoint, toolbox_name)

@@ -39,6 +39,9 @@ param aiFoundryProjectName string = 'ai-project-${environmentName}'
 @description('Enable hosted agent deployment')
 param enableHostedAgents bool
 
+@description('Enable the capability host for agent conversations. When false and hosted agents are enabled, the capability host is not created.')
+param enableCapabilityHost bool
+
 @description('Enable Azure AI Search provisioning and project connection')
 param enableSearch bool = true
 
@@ -120,6 +123,7 @@ module aiProject 'core/ai/ai-project.bicep' = {
     additionalDependentResources: dependentResources
     enableMonitoring: enableMonitoring
     enableHostedAgents: enableHostedAgents
+    enableCapabilityHost: enableCapabilityHost
     enableSearch: enableSearch
     existingContainerRegistryResourceId: existingContainerRegistryResourceId
     existingContainerRegistryEndpoint: existingContainerRegistryEndpoint

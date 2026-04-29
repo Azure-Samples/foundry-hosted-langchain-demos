@@ -24,11 +24,10 @@ import os
 from datetime import date
 
 import httpx
-import mcp.types
 from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
 from langchain.agents import create_agent
-from langchain_core.tools import tool
+from langchain.tools import tool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
 from rich.console import Console
@@ -59,43 +58,6 @@ def get_enrollment_deadline_info() -> dict:
         "enrollment_opens": "2026-11-11",
         "enrollment_closes": "2026-11-30",
     }
-
-
-def _sanitize_tools(tools: list) -> list:
-    for tool_obj in tools:
-        tool_obj.handle_tool_error = True
-        schema = tool_obj.args_schema if isinstance(tool_obj.args_schema, dict) else None
-        if schema is None:
-            continue
-        if schema.get("type") == "object" and "properties" not in schema:
-            schema["properties"] = {}
-        props = schema.get("properties", {})
-        required = schema.get("required", [])
-        if required and not props:
-            for field_name in required:
-                props[field_name] = {"type": "string"}
-            schema["properties"] = props
-    return tools
-
-
-# Workaround: Azure AI Search KB MCP returns resource content with uri: null
-# or uri: "", which fails pydantic AnyUrl validation in the MCP SDK.
-for _cls in [
-    mcp.types.ResourceContents,
-    mcp.types.TextResourceContents,
-    mcp.types.BlobResourceContents,
-]:
-    _cls.model_fields["uri"].annotation = str | None
-    _cls.model_fields["uri"].default = None
-    _cls.model_fields["uri"].metadata = []
-for _cls in [
-    mcp.types.ResourceContents,
-    mcp.types.TextResourceContents,
-    mcp.types.BlobResourceContents,
-    mcp.types.EmbeddedResource,
-    mcp.types.CallToolResult,
-]:
-    _cls.model_rebuild(force=True)
 
 
 async def main() -> None:
@@ -130,7 +92,7 @@ async def main() -> None:
                 }
             }
         )
-        kb_tools = _sanitize_tools(await kb_client.get_tools())
+        kb_tools = await kb_client.get_tools()
 
         agent = create_agent(
             model=client,
@@ -144,18 +106,15 @@ async def main() -> None:
             ),
         )
 
-        response = (
-            await agent.ainvoke(
-                {
+        result = await agent.ainvoke({
                     "messages": [
                         {
                             "role": "user",
                             "content": "What PerksPlus benefits are there, and when do I need to enroll by?",
                         }
                     ]
-                }
-            )
-        )["messages"][-1]
+                })
+        response = result["messages"][-1]
         console.print("\n[bold]Agent answer:[/bold]")
         console.print(Markdown(response.text))
     finally:

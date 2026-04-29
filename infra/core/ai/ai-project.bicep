@@ -31,6 +31,9 @@ param enableMonitoring bool = true
 @description('Enable hosted agent deployment')
 param enableHostedAgents bool = false
 
+@description('Enable the capability host for agent conversations. When false and hosted agents are enabled, the capability host is not created (v2 hosted agents handle storage automatically).')
+param enableCapabilityHost bool = true
+
 @description('Enable Azure AI Search provisioning and project connection')
 param enableSearch bool = true
 
@@ -149,7 +152,7 @@ resource aiAccount 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
     ]
   }
 
-  resource aiFoundryAccountCapabilityHost 'capabilityHosts@2025-10-01-preview' = if (enableHostedAgents) {
+  resource aiFoundryAccountCapabilityHost 'capabilityHosts@2025-10-01-preview' = if (enableHostedAgents && enableCapabilityHost) {
     name: 'agents'
     properties: {
       capabilityHostKind: 'Agents'

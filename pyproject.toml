@@ -10,6 +10,7 @@ dependencies = [
     "azure-search-documents>=11.6.0",
     "httpx>=0.28.1",
     "langchain>=1.2.15",
+    "langchain-azure-ai>=1.2.3",
     "langchain-mcp-adapters>=0.2.2",
     "langchain-openai>=1.2.0",
     "langgraph>=1.1.9",

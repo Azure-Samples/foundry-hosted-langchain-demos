@@ -20,7 +20,7 @@ import logging
 from datetime import date
 
 from langchain.agents import create_agent
-from langchain_core.tools import tool
+from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 from rich.console import Console
 from rich.logging import RichHandler
@@ -58,9 +58,9 @@ agent = create_agent(
 
 
 async def main() -> None:
-    response = (
-        await agent.ainvoke({"messages": [{"role": "user", "content": "When does benefits enrollment open?"}]})
-    )["messages"][-1]
+    result = await agent.ainvoke(
+        {"messages": [{"role": "user", "content": "When does benefits enrollment open?"}]})
+    response = result["messages"][-1]
     console.print("\n[bold]Agent answer:[/bold]")
     console.print(Markdown(response.text))
 

@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=".env", override=True)
 
-AGENT_NAME = os.environ.get("AGENT_NAME", "hosted-langgraph-agent")
+AGENT_NAME = os.environ.get("AGENT_NAME", "hosted-langchain-agent")
 PROJECT_ENDPOINT = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
 
 

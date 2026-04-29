@@ -10,7 +10,7 @@ fi
 
 SEARCH_SCOPE="/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${AZURE_RESOURCE_GROUP}/providers/Microsoft.Search/searchServices/${AZURE_AI_SEARCH_SERVICE_NAME}"
 
-SERVICES="hosted-langgraph-agent hosted-langgraph-workflow"
+SERVICES="hosted-langchain-agent hosted-langgraph-workflow"
 for SERVICE in $SERVICES; do
     AGENT_PRINCIPAL_ID=$(azd ai agent show "$SERVICE" 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['instance_identity']['principal_id'])" 2>/dev/null || true)
 

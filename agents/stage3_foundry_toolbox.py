@@ -20,13 +20,12 @@ import os
 import re
 from datetime import date
 
-import mcp.types
 from azure.identity import DefaultAzureCredential as SyncDefaultAzureCredential
 from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
 from langchain.agents import create_agent
+from langchain.tools import tool
 from langchain_azure_ai.tools import AzureAIProjectToolbox
-from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from rich.console import Console
 from rich.logging import RichHandler
@@ -39,11 +38,10 @@ logger = logging.getLogger("stage3")
 
 
 def _sanitize_tool_names(tools: list) -> list:
-    """Fix MCP tool names for Responses API compatibility (^[a-zA-Z0-9_-]+$)."""
+    """Fix MCP tool names for Responses API compatibility. Awaiting fix from Foundry Toolbox team."""
     for t in tools:
         sanitized = re.sub(r"[^a-zA-Z0-9_-]", "_", t.name)
         if sanitized != t.name:
-            logger.info("Renamed tool %r -> %r", t.name, sanitized)
             t.name = sanitized
     return tools
 
@@ -56,26 +54,6 @@ def get_enrollment_deadline_info() -> dict:
         "enrollment_opens": "2026-11-11",
         "enrollment_closes": "2026-11-30",
     }
-
-
-# Workaround: Azure AI Search KB MCP returns resource content with uri: null
-# or uri: "", which fails pydantic AnyUrl validation in the MCP SDK.
-for _cls in [
-    mcp.types.ResourceContents,
-    mcp.types.TextResourceContents,
-    mcp.types.BlobResourceContents,
-]:
-    _cls.model_fields["uri"].annotation = str | None
-    _cls.model_fields["uri"].default = None
-    _cls.model_fields["uri"].metadata = []
-for _cls in [
-    mcp.types.ResourceContents,
-    mcp.types.TextResourceContents,
-    mcp.types.BlobResourceContents,
-    mcp.types.EmbeddedResource,
-    mcp.types.CallToolResult,
-]:
-    _cls.model_rebuild(force=True)
 
 
 async def main() -> None:
@@ -111,18 +89,15 @@ async def main() -> None:
             ),
         )
 
-        response = (
-            await agent.ainvoke(
-                {
+        result = await agent.ainvoke({
                     "messages": [
                         {
                             "role": "user",
                             "content": "What PerksPlus benefits are available to employees?",
                         }
                     ]
-                }
-            )
-        )["messages"][-1]
+                })
+        response = result["messages"][-1]
         console.print("\n[bold]Agent answer:[/bold]")
         console.print(Markdown(response.text))
     finally:
