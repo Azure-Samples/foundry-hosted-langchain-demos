@@ -115,7 +115,6 @@ from langchain_core.messages import (
     BaseMessage,
     HumanMessage,
     SystemMessage,
-    ToolMessage,
 )
 from langchain_core.runnables import Runnable, RunnableConfig
 from langgraph.types import Command
@@ -333,8 +332,7 @@ def _content_part_to_message_content(
 
 def _item_to_message(item: _FoundryMessageItem) -> Optional[BaseMessage]:
     """Convert a Foundry item with role/content fields into a LangChain message."""
-    # Skip items like OutputItemFunctionToolCall that lack a content attribute.
-    if not hasattr(item, "content") or not item.content:
+    if not item.content:
         return None
 
     raw_content = item.content
@@ -595,12 +593,6 @@ async def _stream_message_events(
             ):
                 if not isinstance(chunk, BaseMessage):  # type: ignore[has-type]
                     continue
-                # ToolMessage carries raw tool output (e.g. JSON from a
-                # search tool) which must not leak into the user-visible
-                # response text.  Only AIMessage/AIMessageChunk content
-                # should be streamed.
-                if isinstance(chunk, ToolMessage):  # type: ignore[has-type]
-                    continue
 
                 content_parts = _message_to_stream_parts(chunk)  # type: ignore[has-type]
 
@@ -623,8 +615,7 @@ async def _stream_message_events(
                                     stream.add_output_item_function_call(
                                         name=tool_name
                                         if isinstance(tool_name, str)
-                                        and tool_name
-                                        else "_pending",
+                                        else "",
                                         call_id=call_id,
                                     )
                                 )
